@@ -51,6 +51,8 @@ h1 {
   transition: transform 0.08s ease;
 }
 .chip:active { transform: scale(0.92); }
+.chip.hidden { display: none; }
+.chip.streak { background: rgba(255, 235, 205, 0.9); cursor: default; }
 
 .hud {
   display: flex;
@@ -153,6 +155,57 @@ h1 {
   box-shadow: 0 4px 0 #2f7d33;
 }
 .big-btn.alt:active { box-shadow: 0 1px 0 #2f7d33; }
+.big-btn.small { padding: 9px 16px; font-size: 0.95rem; }
+
+.lb-submit {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.lb-submit.hidden { display: none; }
+.lb-submit input {
+  flex: 1;
+  min-width: 0;
+  border: 2px solid #e0b98a;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #5b3a1e;
+  background: #fff;
+  outline: none;
+}
+.lb-submit input:focus { border-color: #f07b1d; }
+
+#lbOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(70, 35, 5, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  animation: fadeIn 0.25s ease;
+}
+#lbOverlay.hidden { display: none; }
+#lbList {
+  list-style: none;
+  margin: 12px 0 16px;
+  text-align: left;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+#lbList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 4px;
+  border-bottom: 1px dashed rgba(160, 110, 60, 0.25);
+  font-size: 0.95rem;
+}
+#lbList li b { font-variant-numeric: tabular-nums; }
+#lbList li:first-child { font-size: 1.05rem; }
 
 #evolution {
   display: flex;

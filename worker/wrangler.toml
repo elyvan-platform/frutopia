@@ -1,0 +1,9 @@
+name = "frutopia-leaderboard"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Substitui o id abaixo pelo que o comando seguinte devolver:
+#   npx wrangler kv namespace create SCORES
+[[kv_namespaces]]
+binding = "SCORES"
+id = "SUBSTITUI_PELO_ID_DO_TEU_NAMESPACE"

@@ -6,7 +6,20 @@
 <meta name="theme-color" content="#ffb75e">
 <title>Frutopia 🍉 — junta as frutas!</title>
 <meta name="description" content="Larga frutas, junta duas iguais e tenta chegar à melancia. Jogo gratuito no browser — desafio diário incluído!">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Frutopia 🍉 — junta as frutas!">
+<meta property="og:description" content="Larga frutas, junta duas iguais e tenta chegar à melancia. Grátis, no browser, com desafio diário!">
+<meta property="og:url" content="https://elyvan-platform.github.io/frutopia/">
+<meta property="og:image" content="https://elyvan-platform.github.io/frutopia/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Frutopia 🍉 — junta as frutas!">
+<meta name="twitter:description" content="Larga frutas, junta duas iguais e tenta chegar à melancia. Grátis, no browser, com desafio diário!">
+<meta name="twitter:image" content="https://elyvan-platform.github.io/frutopia/og.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍉</text></svg>">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,6 +27,8 @@
   <header>
     <h1 id="gameTitle">🍉 Frutopia</h1>
     <div class="btns">
+      <span id="streakChip" class="chip streak hidden">🔥0</span>
+      <button id="lbBtn" class="chip hidden" title="Top 10">🏆</button>
       <button id="modeBtn" class="chip" title="Modo"></button>
       <button id="soundBtn" class="chip" title="Som">🔊</button>
       <button id="restartBtn" class="chip" title="Reiniciar">↻</button>
@@ -43,11 +58,24 @@
         <p id="overRecord" class="record hidden">🎉 Novo recorde!</p>
         <p class="overScore"><b id="overScore">0</b> <span id="overPts">pontos</span></p>
         <p id="overBiggest" class="biggest"></p>
+        <p id="overStreak" class="biggest hidden"></p>
+        <div id="lbSubmitRow" class="lb-submit hidden">
+          <input id="nameInput" maxlength="16" autocomplete="nickname" placeholder="O teu nome">
+          <button id="sendBtn" class="big-btn small">OK</button>
+        </div>
         <div class="overBtns">
           <button id="againBtn" class="big-btn">Jogar de novo</button>
           <button id="shareBtn" class="big-btn alt">Partilhar 📋</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="lbOverlay" class="hidden">
+    <div class="panel">
+      <h2 id="lbTitle">🏆 Top 10</h2>
+      <ol id="lbList"><li>…</li></ol>
+      <button id="lbCloseBtn" class="big-btn">OK</button>
     </div>
   </div>
 
