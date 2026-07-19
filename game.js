@@ -1,6 +1,10 @@
 /* Frutopia — jogo de fusão de frutas. Sem dependências, sem assets. */
 "use strict";
 
+/* Leaderboard online (opcional): cola aqui o URL do worker depois do deploy
+   (ver worker/README.md). Vazio = leaderboard escondido, jogo 100% offline. */
+const LEADERBOARD_URL = "";
+
 /* ---------------------------------------------------------------- i18n */
 
 const PT = navigator.language && navigator.language.toLowerCase().startsWith("pt");
@@ -11,6 +15,8 @@ const T = PT ? {
   again: "Jogar de novo", share: "Partilhar 📋", copied: "Resultado copiado!",
   biggest: "Maior fruta", classic: "Clássico", daily: "Diário",
   shareClassic: "Clássico", shareDaily: "Desafio Diário",
+  streak: "dias seguidos", lbTitle: "🏆 Top 10", lbEmpty: "Ainda sem resultados — sê o primeiro!",
+  lbError: "Sem ligação ao ranking 😕", lbSent: "Resultado enviado! 🏆", yourName: "O teu nome",
 } : {
   score: "Score", best: "Best", next: "Next",
   hint: "Tap to drop the fruit · match two of a kind!",
@@ -18,6 +24,8 @@ const T = PT ? {
   again: "Play again", share: "Share 📋", copied: "Result copied!",
   biggest: "Biggest fruit", classic: "Classic", daily: "Daily",
   shareClassic: "Classic", shareDaily: "Daily Challenge",
+  streak: "day streak", lbTitle: "🏆 Top 10", lbEmpty: "No scores yet — be the first!",
+  lbError: "Leaderboard unreachable 😕", lbSent: "Score submitted! 🏆", yourName: "Your name",
 };
 
 const FRUITS = [
@@ -81,10 +89,11 @@ const store = {
   set(k, v) { try { localStorage.setItem("frutopia." + k, JSON.stringify(v)); } catch { /* privado/cheio */ } },
 };
 
-function todayKey() {
-  const d = new Date();
+function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+function todayKey() { return dateKey(new Date()); }
+function yesterdayKey() { return dateKey(new Date(Date.now() - 864e5)); }
 function bestKey() { return mode === "daily" ? "best.daily." + todayKey() : "best.classic"; }
 
 /* seeded RNG (mulberry32) para o desafio diário — igual para todos */
@@ -159,6 +168,35 @@ function applyTexts() {
   $("shareBtn").textContent = T.share;
   $("modeBtn").textContent = mode === "daily" ? "📅 " + T.daily : "♾️ " + T.classic;
   $("soundBtn").textContent = muted ? "🔇" : "🔊";
+  $("nameInput").placeholder = T.yourName;
+  $("lbTitle").textContent = T.lbTitle;
+  updateStreakChip();
+}
+
+/* ------------------------------------------------------------- streak 🔥 */
+
+function currentStreak() { return store.get("daily.streak", 0); }
+
+function bumpStreak() {
+  const last = store.get("daily.lastPlayed", "");
+  const today = todayKey();
+  if (last === today) return;
+  const streak = last === yesterdayKey() ? currentStreak() + 1 : 1;
+  store.set("daily.streak", streak);
+  store.set("daily.lastPlayed", today);
+  updateStreakChip();
+}
+
+function streakIsLive() {
+  const last = store.get("daily.lastPlayed", "");
+  return last === todayKey() || last === yesterdayKey();
+}
+
+function updateStreakChip() {
+  const el = $("streakChip");
+  const show = mode === "daily" && streakIsLive() && currentStreak() > 0;
+  el.classList.toggle("hidden", !show);
+  if (show) el.textContent = "🔥" + currentStreak();
 }
 
 /* barra de evolução */
@@ -589,6 +627,7 @@ function drop() {
   const f = makeFruit(currentTier, x, SPAWN_Y);
   f.scale = 1;
   fruits.push(f);
+  if (mode === "daily") bumpStreak();
   sndDrop();
   canDrop = false;
   dropTimer = DROP_COOLDOWN;
@@ -604,13 +643,18 @@ function gameOver() {
   $("overScore").textContent = score;
   $("overBiggest").textContent = `${T.biggest}: ${FRUITS[biggestTier].emoji} ${FRUITS[biggestTier].name}`;
   $("overRecord").classList.toggle("hidden", !newBest);
+  const showStreak = mode === "daily" && currentStreak() > 0;
+  $("overStreak").classList.toggle("hidden", !showStreak);
+  if (showStreak) $("overStreak").textContent = `🔥 ${currentStreak()} ${T.streak}`;
   $("overlay").classList.remove("hidden");
+  lbOnGameOver();
 }
 
 function shareText() {
   const modeName = mode === "daily" ? `${T.shareDaily} ${todayKey()}` : T.shareClassic;
+  const streak = mode === "daily" && currentStreak() > 1 ? ` · 🔥${currentStreak()}` : "";
   const url = location.href.startsWith("http") ? "\n" + location.href.split("#")[0].split("?")[0] : "";
-  return `🍉 Frutopia — ${modeName}\n⭐ ${score} ${T.pts} · ${FRUITS[biggestTier].emoji} ${FRUITS[biggestTier].name}${url}`;
+  return `🍉 Frutopia — ${modeName}\n⭐ ${score} ${T.pts} · ${FRUITS[biggestTier].emoji} ${FRUITS[biggestTier].name}${streak}${url}`;
 }
 
 let toastTimer = 0;
@@ -635,6 +679,77 @@ async function share() {
   }
 }
 
+/* ---------------------------------------------------- leaderboard online */
+
+const LB = LEADERBOARD_URL.replace(/\/+$/, "");
+let lbSubmitted = false;
+
+function boardId() { return mode === "daily" ? "daily-" + todayKey() : "classic"; }
+
+async function lbSubmit(name) {
+  const res = await fetch(LB + "/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ board: boardId(), name, score }),
+  });
+  if (!res.ok) throw new Error("submit failed");
+}
+
+function lbOnGameOver() {
+  lbSubmitted = false;
+  $("lbSubmitRow").classList.add("hidden");
+  if (!LB || score <= 0) return;
+  const name = store.get("name", "");
+  if (name) {
+    lbSubmit(name).then(() => { lbSubmitted = true; }).catch(() => toast(T.lbError));
+  } else {
+    $("lbSubmitRow").classList.remove("hidden");
+  }
+}
+
+async function lbSend() {
+  const name = $("nameInput").value.trim().slice(0, 16);
+  if (!name || lbSubmitted) return;
+  store.set("name", name);
+  $("lbSubmitRow").classList.add("hidden");
+  try {
+    await lbSubmit(name);
+    lbSubmitted = true;
+    toast(T.lbSent);
+  } catch {
+    toast(T.lbError);
+  }
+}
+
+async function lbShow() {
+  const list = $("lbList");
+  list.innerHTML = "<li>…</li>";
+  $("lbOverlay").classList.remove("hidden");
+  try {
+    const res = await fetch(LB + "/top?board=" + encodeURIComponent(boardId()));
+    if (!res.ok) throw new Error("top failed");
+    const data = await res.json();
+    list.innerHTML = "";
+    const scores = (data.scores || []).slice(0, 10);
+    if (!scores.length) {
+      list.innerHTML = `<li>${T.lbEmpty}</li>`;
+      return;
+    }
+    const medals = ["🥇", "🥈", "🥉"];
+    scores.forEach((s, i) => {
+      const li = document.createElement("li");
+      const who = document.createElement("span");
+      who.textContent = `${medals[i] || (i + 1) + "."} ${s.name}`;
+      const pts = document.createElement("b");
+      pts.textContent = s.score;
+      li.append(who, pts);
+      list.appendChild(li);
+    });
+  } catch {
+    list.innerHTML = `<li>${T.lbError}</li>`;
+  }
+}
+
 /* ---------------------------------------------------------------- input */
 
 function canvasX(ev) {
@@ -650,6 +765,10 @@ canvas.addEventListener("pointerup", (ev) => {
 });
 
 window.addEventListener("keydown", (ev) => {
+  if (ev.target && ev.target.tagName === "INPUT") {
+    if (ev.key === "Enter") lbSend();
+    return;
+  }
   if (ev.repeat && ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
   switch (ev.key) {
     case "ArrowLeft": aimX = Math.max(0, aimX - 22); break;
@@ -670,6 +789,13 @@ $("soundBtn").addEventListener("click", () => { ensureAudio(); toggleMute(); });
 $("restartBtn").addEventListener("click", () => newGame());
 $("againBtn").addEventListener("click", () => newGame());
 $("shareBtn").addEventListener("click", share);
+$("sendBtn").addEventListener("click", lbSend);
+$("lbBtn").addEventListener("click", lbShow);
+$("lbCloseBtn").addEventListener("click", () => $("lbOverlay").classList.add("hidden"));
+$("lbOverlay").addEventListener("click", (ev) => {
+  if (ev.target === $("lbOverlay")) $("lbOverlay").classList.add("hidden");
+});
+if (LB) $("lbBtn").classList.remove("hidden");
 $("modeBtn").addEventListener("click", () => {
   mode = mode === "classic" ? "daily" : "classic";
   applyTexts();
@@ -686,6 +812,11 @@ document.addEventListener("visibilitychange", () => {
 applyTexts();
 newGame();
 requestAnimationFrame((t) => { lastTime = t; requestAnimationFrame(frame); });
+
+/* PWA: funciona offline e instala-se como app */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => { /* opcional */ });
+}
 
 /* hook mínimo para testes automatizados (sem efeito no jogo normal) */
 window.__frutopia = {

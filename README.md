@@ -34,6 +34,16 @@ Não precisa de build, servidor nem dependências — são 3 ficheiros estático
 - **Desafio Diário 📅** — todos os jogadores do mundo recebem a *mesma*
   sequência de frutas nesse dia (RNG com semente = data). Compara resultados
   com amigos e volta amanhã para o próximo desafio.
+- **Streak 🔥** — dias consecutivos a jogar o Desafio Diário, visível no jogo
+  e incluído no texto de partilha (ao estilo Wordle).
+- **PWA instalável** — no telemóvel aparece "Adicionar ao ecrã inicial";
+  abre em ecrã inteiro como app e funciona offline (service worker).
+- **Cartões de partilha** — meta tags Open Graph/Twitter + imagem de preview:
+  o link fica apelativo no WhatsApp, X, Discord, etc.
+- **Leaderboard online 🏆 (opcional)** — ranking global por modo (clássico e
+  diário), com backend pronto a publicar no plano gratuito da Cloudflare em
+  ~3 minutos. Ver [`worker/README.md`](worker/README.md). Enquanto não for
+  configurado, o jogo esconde o leaderboard e funciona 100% offline.
 - **Recordes locais** (por modo e por dia) guardados no dispositivo.
 - **Partilha em 1 toque** do resultado (Web Share API / clipboard).
 - Física própria de círculos (timestep fixo, solver iterativo) — sem bibliotecas.
@@ -45,13 +55,18 @@ Não precisa de build, servidor nem dependências — são 3 ficheiros estático
 
 | Ficheiro | Conteúdo |
 |---|---|
-| `index.html` | Estrutura da página e HUD |
+| `index.html` | Estrutura da página, HUD e meta tags de partilha |
 | `style.css` | Aspeto visual |
-| `game.js` | Motor de física, render, som, modos, i18n |
+| `game.js` | Motor de física, render, som, modos, streak, leaderboard, i18n |
+| `manifest.webmanifest` / `sw.js` | PWA: instalação e funcionamento offline |
+| `icons/` / `og.png` | Ícones da app e imagem de partilha (gerados por código) |
+| `worker/` | API do leaderboard (Cloudflare Worker + KV) e instruções de deploy |
 | `ANALISE.md` | Análise que fundamenta as escolhas de design |
 
 ## 🧪 Testes
 
 O jogo expõe um hook mínimo (`window.__frutopia`) usado por um smoke test
 headless (Playwright + Chromium) que valida: largadas, fusões, pontuação,
-fim de jogo, reinício e troca de modo, sem erros de consola.
+fim de jogo, reinício, troca de modo, streak diário, presença do manifest/OG
+e o fluxo completo do leaderboard (com API simulada) — sem erros de consola.
+A API do worker tem testes próprios (validação, ordenação, CORS, rate-limit).
